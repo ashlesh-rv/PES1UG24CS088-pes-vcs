@@ -151,15 +151,7 @@ int tree_from_index(ObjectID *id_out) {
         te->hash = e->hash;
     }
 
-    void *data;
-    size_t len;
-
-    if (tree_serialize(&root, &data, &len) != 0) return -1;
-
-    if (object_write(OBJ_TREE, data, len, id_out) != 0) {
-        free(data);
-        return -1;
-    }
+   
 
     free(data);
     return 0;
