@@ -194,8 +194,72 @@ int head_update(const ObjectID *new_commit) {
 //
 // Returns 0 on success, -1 on error.
 int commit_create(const char *message, ObjectID *commit_id_out) {
-    // TODO: Implement commit creation
-    // (See Lab Appendix for logical steps)
-    (void)message; (void)commit_id_out;
-    return -1;
+    printf("DEBUG: start commit_create\n");
+
+    if (!commit_id_out) {
+        printf("DEBUG: commit_id_out is NULL\n");
+        return -1;
+    }
+
+    ObjectID tree_id;
+    printf("DEBUG: step 1 - building tree\n");
+    if (tree_from_index(&tree_id) != 0) {
+        printf("DEBUG: tree_from_index FAILED\n");
+        return -1;
+    }
+
+    Commit c;
+    memset(&c, 0, sizeof(c));
+
+    c.tree = tree_id;
+
+    printf("DEBUG: step 2 - reading HEAD\n");
+    if (head_read(&c.parent) == 0) {
+        c.has_parent = 1;
+        printf("DEBUG: parent found\n");
+    } else {
+        c.has_parent = 0;
+        printf("DEBUG: no parent (first commit)\n");
+    }
+
+    printf("DEBUG: step 3 - setting author\n");
+    const char *author = pes_author();
+    if (!author) author = "unknown";
+    snprintf(c.author, sizeof(c.author), "%s", author);
+
+    c.timestamp = (uint64_t)time(NULL);
+
+    printf("DEBUG: step 4 - setting message\n");
+    if (!message) {
+        printf("DEBUG: message is NULL\n");
+        return -1;
+    }
+    snprintf(c.message, sizeof(c.message), "%s", message);
+
+    void *data;
+    size_t len;
+
+    printf("DEBUG: step 5 - serializing commit\n");
+    if (commit_serialize(&c, &data, &len) != 0) {
+        printf("DEBUG: commit_serialize FAILED\n");
+        return -1;
+    }
+
+    printf("DEBUG: step 6 - writing object\n");
+    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0) {
+        printf("DEBUG: object_write FAILED\n");
+        free(data);
+        return -1;
+    }
+
+    free(data);
+
+    printf("DEBUG: step 7 - updating HEAD\n");
+    if (head_update(commit_id_out) != 0) {
+        printf("DEBUG: head_update FAILED\n");
+        return -1;
+    }
+
+    printf("DEBUG: SUCCESS - commit created\n");
+    return 0;
 }
